@@ -48,20 +48,24 @@ class rs_get():
         self.distort = [0.0]*5
         self.get_cam_param()
         print("{} cam param is : {}".format(alias, self.k))
+        self.cam_info = CameraInfo()
+        self.cam_info.width = self.width
+        self.cam_info.height = self.height
+        self.cam_info.header.frame_id = "camera_link"
+        self.cam_info.K = self.k
         self.is_data_updated = False
 
         ## wait for 1s to maker sure color images arrive
         rospy.sleep(1)
-        self.color_raw = None
-        self.depth_raw = None
+        self.color_img = np.zeros((height, width, 3))
+        self.depth_1d = np.zeros((height, width, 3))
         self.get_rgbd()
 
         self.recording = False
         self.lock = threading.Lock()
         # self.start_srv = rospy.Service(self.alias+"/start_recording", Trigger, self.start_recording)
-        self.stop_srv  = rospy.Service(self.alias+"/stop_recording",  Trigger, self.stop_recording)
         self.start_srv = rospy.Service(self.alias+"/start_recording", VideoRecording, self.start_recording)
-        # self.stop_srv  = rospy.Service(self.alias+"/stop_recording",  VideoRecording, self.stop_recording)
+        self.stop_srv  = rospy.Service(self.alias+"/stop_recording",  Trigger, self.stop_recording)
 
     def set_config(self, config):
         ## config = "Default", "High Accuracy", "High Density"
@@ -113,11 +117,9 @@ class rs_get():
             if not aligned_depth_frame or not color_frame:
                 return -1
 
-            depth_image = np.asanyarray(aligned_depth_frame.get_data())
-            color_image = np.asanyarray(color_frame.get_data())
-
-            self.color_img = color_image
-            self.depth_1d = depth_image
+            self.color_img = np.asanyarray(color_frame.get_data())
+            self.depth_1d = np.asanyarray(aligned_depth_frame.get_data())
+            
 
             with self.lock:
                 if self.out is not None:
@@ -130,23 +132,17 @@ class rs_get():
             return -1
 
     def pub_data(self):
-        img_msg = self.bridge.cv2_to_imgmsg(self.color_img)
+        img_msg = self.bridge.cv2_to_imgmsg(self.color_img, encoding="bgr8")
         self.image_pub.publish(img_msg)
         depth_msg = self.bridge.cv2_to_imgmsg(self.depth_1d)
         self.depth_pub.publish(depth_msg)
-        cam_info = CameraInfo()
-        cam_info.width = self.color_img.shape[1]
-        cam_info.height = self.color_img.shape[0]
-        cam_info.header.frame_id = "camera_link"
-        cam_info.K = self.k
-        self.k_pub.publish(cam_info)
+        self.k_pub.publish(self.cam_info)
 
     def start_recording(self, req):
         with self.lock:
             if self.recording:
                 # return TriggerResponse(success=False, message="Already recording")
                 return VideoRecordingResponse(success=False, message="Already recording")
-
 
             # fourcc = cv2.VideoWriter_fourcc(*'XVID')
             fourcc = cv2.VideoWriter_fourcc(*'MJPG')
