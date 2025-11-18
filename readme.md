@@ -13,4 +13,4 @@
 	- To start recording, use `rosservice call /front_cam/start_recording "PATH_TO_SAVE"`
 	- To stop recording, use `rosservice call /front_cam/stop_recording`
 
-- To test, run `test.py`. The image is published to `/py_ros_realsense_test/debug`.
+- To test, run `subscribe_to_topic.py` or `get_single_image.py`. The image is published to `/py_ros_realsense_test/debug`.
