@@ -104,7 +104,8 @@ class rs_get():
             data_retrieved = self.get_rgbd()
 
     def get_cam_param(self):
-        st_profile = self.profile.get_stream(rs.stream.depth)
+        # st_profile = self.profile.get_stream(rs.stream.depth)
+        st_profile = self.profile.get_stream(rs.stream.color)
         self.intr = st_profile.as_video_stream_profile().get_intrinsics()
         self.k[0] = self.intr.fx
         self.k[2] = self.intr.ppx
